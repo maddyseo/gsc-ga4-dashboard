@@ -20,7 +20,6 @@ def main():
                 st.error(f"❌ Auth failed: {e}")
         return
 
-    # If authenticated
     st.success("✅ Connected to Google Search Console")
     service = st.session_state["gsc_service"]
 
