@@ -8,38 +8,29 @@ def main():
     st.write("Pull live data from Google Search Console and export insights!")
 
     st.subheader("🔐 Connect to Google Search Console")
-
-    if "gsc_service" not in st.session_state:
-        if st.button("Authenticate with Google"):
-            try:
-                service = authenticate_gsc()
-                st.session_state["gsc_service"] = service
-                st.success("✅ Authenticated successfully!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Auth failed: {e}")
-        return
+    with st.spinner("Connecting..."):
+        try:
+            service = authenticate_gsc()
+        except Exception as e:
+            st.error(f"❌ Failed to authenticate: {e}")
+            return
 
     st.success("✅ Connected to Google Search Console")
-    service = st.session_state["gsc_service"]
 
-    st.info("🎉 Authenticated — pulling site list now...")
-    st.write("🔍 Authenticated session keys:", list(st.session_state.keys()))
-
-    st.write("🛠 Fetching verified sites...")
+    # Fetch and show verified sites
+    st.info("📡 Fetching your verified sites...")
     sites = get_verified_sites(service)
-    st.write("🔗 Sites returned:", sites)
 
     if not sites:
-        st.warning("⚠️ No verified sites found. Please check your Search Console access or Google Cloud credentials.")
+        st.warning("⚠️ No verified sites found. Please make sure your service account has been added in Search Console.")
         return
 
-    site_url = st.selectbox("Choose your verified site", sites)
-    start_date = st.date_input("Start date", date.today() - timedelta(days=30))
-    end_date = st.date_input("End date", date.today())
+    site_url = st.selectbox("🌐 Choose your verified site", sites)
+    start_date = st.date_input("📅 Start date", date.today() - timedelta(days=30))
+    end_date = st.date_input("📅 End date", date.today())
 
     if st.button("Fetch Query Data"):
-        with st.spinner("📊 Fetching data..."):
+        with st.spinner("📊 Querying GSC data..."):
             data = get_gsc_query_data(service, site_url, start_date.isoformat(), end_date.isoformat())
             if data:
                 df = pd.DataFrame(data)
@@ -49,4 +40,4 @@ def main():
                 csv = df.to_csv(index=False).encode("utf-8")
                 st.download_button("📥 Download CSV", csv, "gsc_data.csv", "text/csv")
             else:
-                st.warning("⚠️ No data found for this site and date range.")
+                st.warning("⚠️ No data returned for this date range or site.")
