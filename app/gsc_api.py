@@ -1,5 +1,3 @@
-# app/gsc_api.py
-
 import os
 import streamlit as st
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -39,7 +37,6 @@ def authenticate_gsc():
         try:
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, SCOPES)
 
-            # Detect if running on Render
             if os.environ.get("RENDER") == "true":
                 st.warning("⚠️ Token invalid. Use the console below to authenticate.")
                 creds = flow.run_console()
@@ -67,3 +64,52 @@ def authenticate_gsc():
     except Exception as e:
         st.error(f"❌ Failed to build GSC service: {e}")
         raise e
+
+# ✅ Add these two functions back
+def get_verified_sites(service):
+    try:
+        st.write("📡 Calling service.sites().list()...")
+        response = service.sites().list().execute()
+        st.json(response)  # Show raw response for debugging
+
+        sites = [
+            site['siteUrl']
+            for site in response.get("siteEntry", [])
+            if site.get("permissionLevel") != "siteUnverifiedUser"
+        ]
+        st.write("🔗 Verified sites found:", sites)
+        return sites
+
+    except Exception as e:
+        st.error(f"❌ Error in get_verified_sites: {e}")
+        return []
+
+def get_gsc_query_data(service, site_url, start_date, end_date, row_limit=50):
+    try:
+        st.write(f"📥 Querying GSC data for: {site_url}")
+        request = {
+            'startDate': start_date,
+            'endDate': end_date,
+            'dimensions': ['query'],
+            'rowLimit': row_limit
+        }
+
+        response = service.searchanalytics().query(siteUrl=site_url, body=request).execute()
+        rows = response.get('rows', [])
+
+        data = []
+        for row in rows:
+            data.append({
+                'Query': row['keys'][0],
+                'Clicks': row['clicks'],
+                'Impressions': row['impressions'],
+                'CTR': round(row['ctr'] * 100, 2),
+                'Position': round(row['position'], 2)
+            })
+
+        st.success(f"✅ Retrieved {len(data)} rows from GSC")
+        return data
+
+    except Exception as e:
+        st.error(f"❌ Failed to retrieve query data: {e}")
+        return []
